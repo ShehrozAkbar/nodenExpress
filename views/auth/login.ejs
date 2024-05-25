@@ -14,11 +14,17 @@
         <form class="product-form" action="/login" method="POST">
             <div class="form-control">
                 <label for="email">Email</label>
-                <input type="email" name="email" id="email">
+                <input
+                type="email" name="email" id="email"
+                value="<%= oldInput.email %>">
             </div>
             <div class="form-control">
                 <label for="password">Pasword</label>
-                <input type="text" name="password" id="password"">
+                <input
+                 type="text"
+                  name="password"
+                   id="password"
+                   value="<%= oldInput.password %>">
             </div>
             
             <input type="hidden" name="_csrf" value="<%= csrfToken %>" >
