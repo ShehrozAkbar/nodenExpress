@@ -20,6 +20,7 @@
     "express": "^4.19.2",
     "express-handlebars": "^7.1.2",
     "express-session": "^1.18.0",
+    "express-validator": "^7.1.0",
     "mailgun.js": "^10.2.1",
     "mongodb": "^6.5.0",
     "mongoose": "^8.3.3",

@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
 const session = require('express-session');
 const MongoDBStore = require('connect-mongodb-session')(session);
 const csrf = require('csurf');
-const flash=require('connect-flash');
+const flash = require('connect-flash');
 
 const User = require('./modles/user');
 
@@ -15,6 +15,7 @@ const adminRouter = require('./routes/admin');
 const authRouter = require('./routes/auth');
 
 const errController = require('./controller/error');
+const { ConnectionCheckOutFailedEvent } = require('mongodb');
 
 const MONGODB_URI = 'mongodb+srv://user:2tdk4aFuqjIppYfY@cluster0.y2bazek.mongodb.net/shop?retryWrites=true&w=majority&appName=Cluster0';
 
@@ -71,7 +72,7 @@ app.use((req, res, next) => {
 // to add some data in every rendered view
 app.use((req, res, next) => {
     res.locals.isAuthenticated = req.session.isLoggedIn;
-    res.locals.csrfToken=req.csrfToken();
+    res.locals.csrfToken = req.csrfToken();
     next();
 });
 
@@ -80,8 +81,17 @@ app.use('/admin', adminRouter);
 app.use(shopRouter);
 app.use(authRouter);
 
+app.use('/500', errController.err500);
+
 // handeling 404
 app.use(errController.error404);
+
+// error handling middleware of express
+app.use((err, req, res, next) => {
+    req.session.message=err.toString();
+    console.log(err);
+    res.redirect('/500');
+})
 
 mongoose.connect(MONGODB_URI)
     .then((result) => {

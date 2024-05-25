@@ -5,6 +5,7 @@ const User = require('../modles/user');
 const { path } = require('../routes/shop');
 
 const nodemailer = require('nodemailer');
+const { validationResult } = require('express-validator')
 
 // this 3rd party service needs a domain name to send emails
 // const mandrillTransport = require('nodemailer-mandrill-transport');
@@ -35,7 +36,8 @@ exports.getLogin = (req, res, next) => {
         path: '/login',
         isAuthenticated: req.isLoggedIn,
         csrfToken: req.csrfToken(),
-        errorMessage: message
+        errorMessage: message,
+        oldInput: { email: '', password: '' }
     });
 }
 
@@ -44,16 +46,27 @@ exports.postLogin = (req, res, next) => {
     const password = req.body.password;
     User.findOne({ email: email })
         .then(user => {
+            // this is i am just checking that how to through an error in a async code
+            // throw new Error('dummy');
             if (!user) {
-                console.log('wrong email');
-                req.flash('error', 'Invalid Email or Password');
-                return res.redirect('/login');
+                return res.status(422).render('auth/login',
+                    {
+                        pageTitle: 'Login',
+                        path: '/login',
+                        errorMessage: 'Invalid Email or Password',
+                        oldInput: { email: email, password: password },
+                    });
             }
             bcrypt.compare(password, user.password)
                 .then(match => {
                     if (!match) {
-                        req.flash('error', 'Invalid Email or Password')
-                        return res.redirect('/login');
+                        return res.status(422).render('auth/login',
+                            {
+                                pageTitle: 'Login',
+                                path: '/login',
+                                errorMessage: 'Invalid Password',
+                                oldInput: { email: email, password: password },
+                            });
                     }
 
                     req.session.user = user;
@@ -70,9 +83,10 @@ exports.postLogin = (req, res, next) => {
 
         })
         .catch(err => {
-            console.log(err);
-        })
-
+            const error = new Error(err);
+            error.httpStatusCode = 500;
+            return next(error);
+        });
 }
 
 exports.postLogout = (req, res, next) => {
@@ -93,49 +107,55 @@ exports.getSignUp = (req, res, next) => {
         {
             pageTitle: 'Sign Up',
             path: '/signup',
-            errorMessage: message
+            errorMessage: message,
+            oldInput: { email: '', password: '', confirmPassword: '' },
+            validationErrors: []
         }
     );
 }
-
+// hoii
 exports.postSignUp = (req, res, next) => {
 
     const email = req.body.email;
     const password = req.body.password;
-    const confirmPassword = req.body.confirmPassword;
 
-    User.findOne({ email: email })
-        .then(userData => {
-            if (userData) {
-                req.flash('error', 'Email already existed!')
-                return res.redirect('/signup');
-            }
-            return bcrypt.hash(password, 12)
-                .then(hashPassword => {
-                    const user = new User({
-                        email: email,
-                        password: hashPassword,
-                        cart: { items: [] }
-                    })
-                    return user.save();
-                })
-                .then(() => {
-                    res.redirect('/login');
-                    return transport.sendMail({
-                        to: email,
-                        from: 'shehrozakbar95@gmail.com',
-                        subject: 'succesfull signup',
-                        html: '<h1>your signup was sucessfull here!</h1>'
-                    });
-                })
-                .catch(err => {
-                    console.log(err);
-                })
+    const errors = validationResult(req);
+    console.log(errors);
+    if (!errors.isEmpty()) {
+        return res.status(422).render('auth/signup',
+            {
+                pageTitle: 'Sign Up',
+                path: '/signup',
+                errorMessage: errors.array()[0].msg,
+                oldInput: { email: email, password: password, confirmPassword: req.body.confirmPassword },
+                validationErrors: errors.array()
+            });
+    }
 
+
+    bcrypt.hash(password, 12)
+        .then(hashPassword => {
+            const user = new User({
+                email: email,
+                password: hashPassword,
+                cart: { items: [] }
+            })
+            return user.save();
+        })
+        .then(() => {
+            res.redirect('/login');
+            return transport.sendMail({
+                to: email,
+                from: 'shehrozakbar95@gmail.com',
+                subject: 'succesfull signup',
+                html: '<h1>your signup was sucessfull here!</h1>'
+            });
         })
         .catch(err => {
-            console.log(err);
-        })
+            const error = new Error(err);
+            error.httpStatusCode = 500;
+            return next(error);
+        });
 };
 
 exports.getReset = (req, res, next) => {
@@ -187,8 +207,10 @@ exports.postReset = (req, res, next) => {
                 res.redirect('/reset');
             })
             .catch(err => {
-                console.log(err);
-            })
+                const error = new Error(err);
+                error.httpStatusCode = 500;
+                return next(error);
+            });
     })
 }
 
@@ -253,6 +275,8 @@ exports.postNewPassword = (req, res, next) => {
                 });
         })
         .catch(err => {
-            console.log(err);
-        })
+            const error = new Error(err);
+            error.httpStatusCode = 500;
+            return next(error);
+        });
 }
