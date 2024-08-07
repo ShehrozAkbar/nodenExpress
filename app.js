@@ -7,8 +7,15 @@ const session = require('express-session');
 const MongoDBStore = require('connect-mongodb-session')(session);
 const csrf = require('csurf');
 const flash = require('connect-flash');
+const helmet = require("helmet");
+const compression = require('compression');
+const morgan = require('morgan');
+const fs = require('fs');
 
 const User = require('./modles/user');
+
+// this will automatically will be set by hostig providers to production
+// console.log(process.env.NODE_ENV);
 
 const shopRouter = require('./routes/shop');
 const adminRouter = require('./routes/admin');
@@ -17,8 +24,8 @@ const authRouter = require('./routes/auth');
 const errController = require('./controller/error');
 const { ConnectionCheckOutFailedEvent } = require('mongodb');
 
-const MONGODB_URI = 'mongodb+srv://user:2tdk4aFuqjIppYfY@cluster0.y2bazek.mongodb.net/shop?retryWrites=true&w=majority&appName=Cluster0';
-
+const MONGODB_URI = `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@cluster0.y2bazek.mongodb.net/${process.env.MONGO_DEFAULT_DATABASE}?retryWrites=true&w=majority&appName=Cluster0`;
+// user:2tdk4aFuqjIppYfY
 const app = express();
 const store = new MongoDBStore({
     uri: MONGODB_URI,
@@ -47,6 +54,14 @@ app.set('views', 'views');
 // End the request-response cycle.
 // Call the next middleware in the stack.
 
+
+// a means apped menas add at the end of the file
+const accessLogStream = fs.createWriteStream(path.join(__dirname, 'access.log'), { flags: 'a' });
+
+// this middileware will set auto header to add some security
+app.use(helmet());
+app.use(compression());
+app.use(morgan('combined', { stream: accessLogStream }));
 
 // these are the middleware functions
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -88,7 +103,7 @@ app.use(errController.error404);
 
 // error handling middleware of express
 app.use((err, req, res, next) => {
-    req.session.message=err.toString();
+    req.session.message = err.toString();
     console.log(err);
     res.redirect('/500');
 })
@@ -96,7 +111,7 @@ app.use((err, req, res, next) => {
 mongoose.connect(MONGODB_URI)
     .then((result) => {
         console.log('DB connected!');
-        app.listen(3000);
+        app.listen(process.env.PORT || 3000);
     })
     .catch(err => {
         console.error(err);
