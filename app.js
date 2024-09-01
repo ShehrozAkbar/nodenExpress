@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const bodyParser = require('body-parser');
 const path = require('path');
 const express = require('express');
@@ -11,6 +13,7 @@ const helmet = require("helmet");
 const compression = require('compression');
 const morgan = require('morgan');
 const fs = require('fs');
+
 
 const User = require('./modles/user');
 
